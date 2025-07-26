@@ -2,18 +2,17 @@
 pragma solidity 0.8.30;
 
 /**
-  ░██████              ░██ ░██   ░██    ░██     ░██ ░██   ░██    
- ░██   ░██             ░██       ░██    ░██    ░██        ░██    
-░██         ░████████  ░██ ░██░████████ ░██   ░██   ░██░████████ 
- ░████████  ░██    ░██ ░██ ░██   ░██    ░███████    ░██   ░██    
-        ░██ ░██    ░██ ░██ ░██   ░██    ░██   ░██   ░██   ░██    
- ░██   ░██  ░███   ░██ ░██ ░██   ░██    ░██    ░██  ░██   ░██    
-  ░██████   ░██░█████  ░██ ░██    ░████ ░██     ░██ ░██    ░████ 
-            ░██                                                  
-            ░██
-*/
-
-import { IERC1155 } from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
+ *   ░██████              ░██ ░██   ░██    ░██     ░██ ░██   ░██
+ *  ░██   ░██             ░██       ░██    ░██    ░██        ░██
+ * ░██         ░████████  ░██ ░██░████████ ░██   ░██   ░██░████████
+ *  ░████████  ░██    ░██ ░██ ░██   ░██    ░███████    ░██   ░██
+ *         ░██ ░██    ░██ ░██ ░██   ░██    ░██   ░██   ░██   ░██
+ *  ░██   ░██  ░███   ░██ ░██ ░██   ░██    ░██    ░██  ░██   ░██
+ *   ░██████   ░██░█████  ░██ ░██    ░████ ░██     ░██ ░██    ░████
+ *             ░██
+ *             ░██
+ */
+import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 
 /**
  * @title Split ERC-721 Interface
@@ -21,44 +20,34 @@ import { IERC1155 } from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
  * @notice Interface for the Split ERC-721 contract that enables fractionalization of ERC721 NFTs
  * into ERC-1155 splits.
  * @dev This interface defines the external ABI for interacting with fractionalized NFTs.
- * 
+ *
  * External contracts, frontends, and backends should use this interface to:
  * - Check contract capabilities and state
- * - Call fractionalization and redemption functions  
+ * - Call fractionalization and redemption functions
  * - Listen for fractionalization events
  * - Query split ownership and metadata
- * 
+ *
  * The interface extends IERC1155 to ensure compatibility with NFT marketplaces and DeFi protocols
  * that expect standard ERC1155 functionality for trading and transferring splits.
- * 
+ *
  * Key features:
  * - Split any ERC721 into multiple ERC1155 shares
  * - Redeem original NFT by burning 100% of splits
  */
 interface ISplitERC721 is IERC1155 {
-
     // ---------------------------- EVENTS ---------------------------
 
     /// @notice Emitted when an NFT is fractionalized into splits
     /// @param nftContract Address of the NFT contract being fractionalized
     /// @param tokenId ID of the NFT being fractionalized
     /// @param splits Number of splits created for the NFT
-    event NFTFractionalized(
-        address indexed nftContract,
-        uint256 indexed tokenId,
-        uint24 splits
-    );
+    event NFTFractionalized(address indexed nftContract, uint256 indexed tokenId, uint24 splits);
 
     /// @notice Emitted when an NFT is redeemed by burning all splits
     /// @param nftContract Address of the NFT contract being redeemed
     /// @param tokenId ID of the NFT being redeemed
     /// @param redeemer Address of the user redeeming the NFT
-    event NFTRedeemed(
-        address indexed nftContract,
-        uint256 indexed tokenId,
-        address indexed redeemer
-    );
-
+    event NFTRedeemed(address indexed nftContract, uint256 indexed tokenId, address indexed redeemer);
 
     // -------------------------- CONSTANTS --------------------------
 
@@ -67,7 +56,6 @@ interface ISplitERC721 is IERC1155 {
 
     /// @notice Maximum number of splits allowed: 1 million splits -> 1 PIP (0.0001%) ownership per split
     function MAX_SPLITS() external view returns (uint24);
-
 
     // ------------------------ CORE FUNCTIONS -----------------------
 
@@ -88,7 +76,6 @@ interface ISplitERC721 is IERC1155 {
      */
     function redeem() external;
 
-    
     // ------------------------ VIEW FUNCTIONS -----------------------
 
     /// @notice Address that escrowed the NFT, ensuring that only the escrower can mint splits
@@ -102,13 +89,16 @@ interface ISplitERC721 is IERC1155 {
      * @return escrowTimestamp Timestamp when the NFT was escrowed - zero if not escrowed.
      * @return redeemTimestamp Timestamp when the NFT was redeemed - zero if not redeemed.
      */
-    function splitNFT() external view returns (
-        address tokenContract,
-        uint256 tokenId,
-        uint24 totalSplits,
-        uint64 escrowTimestamp, 
-        uint64 redeemTimestamp
-    );
+    function splitNFT()
+        external
+        view
+        returns (
+            address tokenContract,
+            uint256 tokenId,
+            uint24 totalSplits,
+            uint64 escrowTimestamp,
+            uint64 redeemTimestamp
+        );
 
     /**
      * @notice Returns the contract URI for the SplitERC721 contract.
@@ -125,5 +115,4 @@ interface ISplitERC721 is IERC1155 {
      * @return uint256 The percentage of ownership represented by the given number of splits, in basis points (1/100th of a percent).
      */
     function ownershipFromSplits(uint24 splits) external view returns (uint256);
-
 }

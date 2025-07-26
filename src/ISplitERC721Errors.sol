@@ -2,19 +2,19 @@
 pragma solidity 0.8.30;
 
 /**
-  ░██████              ░██ ░██   ░██    ░██     ░██ ░██   ░██    
- ░██   ░██             ░██       ░██    ░██    ░██        ░██    
-░██         ░████████  ░██ ░██░████████ ░██   ░██   ░██░████████ 
- ░████████  ░██    ░██ ░██ ░██   ░██    ░███████    ░██   ░██    
-        ░██ ░██    ░██ ░██ ░██   ░██    ░██   ░██   ░██   ░██    
- ░██   ░██  ░███   ░██ ░██ ░██   ░██    ░██    ░██  ░██   ░██    
-  ░██████   ░██░█████  ░██ ░██    ░████ ░██     ░██ ░██    ░████ 
-            ░██                                                  
-            ░██
-*/
+ *   ░██████              ░██ ░██   ░██    ░██     ░██ ░██   ░██
+ *  ░██   ░██             ░██       ░██    ░██    ░██        ░██
+ * ░██         ░████████  ░██ ░██░████████ ░██   ░██   ░██░████████
+ *  ░████████  ░██    ░██ ░██ ░██   ░██    ░███████    ░██   ░██
+ *         ░██ ░██    ░██ ░██ ░██   ░██    ░██   ░██   ░██   ░██
+ *  ░██   ░██  ░███   ░██ ░██ ░██   ░██    ░██    ░██  ░██   ░██
+ *   ░██████   ░██░█████  ░██ ░██    ░████ ░██     ░██ ░██    ░████
+ *             ░██
+ *             ░██
+ */
 
 /**
- * @title Split ERC-721 Errors  
+ * @title Split ERC-721 Errors
  * @author Valerio Di Napoli
  * @notice Defines custom errors for the Split ERC-721 fractionalization system.
  */
@@ -29,6 +29,7 @@ interface ISplitERC721Errors {
         InvalidNFTContract, // The NFT contract is not a valid ERC721 contract
         OnlyEscrower, // Caller is not the address that escrowed the NFT
         InvalidRecipient // The recipient address is invalid (zero address)
+
     }
 
     /// @notice Used for errors with no arguments (optimizes bytecode size and improves readability)

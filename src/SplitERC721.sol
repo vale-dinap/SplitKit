@@ -2,25 +2,24 @@
 pragma solidity 0.8.30;
 
 /**
-  ░██████              ░██ ░██   ░██    ░██     ░██ ░██   ░██    
- ░██   ░██             ░██       ░██    ░██    ░██        ░██    
-░██         ░████████  ░██ ░██░████████ ░██   ░██   ░██░████████ 
- ░████████  ░██    ░██ ░██ ░██   ░██    ░███████    ░██   ░██    
-        ░██ ░██    ░██ ░██ ░██   ░██    ░██   ░██   ░██   ░██    
- ░██   ░██  ░███   ░██ ░██ ░██   ░██    ░██    ░██  ░██   ░██    
-  ░██████   ░██░█████  ░██ ░██    ░████ ░██     ░██ ░██    ░████ 
-            ░██                                                  
-            ░██
-*/
-
-import { Base64 }             from "@openzeppelin/contracts/utils/Base64.sol";
-import { ERC1155 }            from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-import { IERC721 }            from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import { IERC721Metadata }    from "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
-import { IERC721Receiver }    from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import { ISplitERC721 }       from "./ISplitERC721.sol";
-import { ISplitERC721Errors } from "./ISplitERC721Errors.sol";
-import { Strings }            from "@openzeppelin/contracts/utils/Strings.sol";
+ *   ░██████              ░██ ░██   ░██    ░██     ░██ ░██   ░██
+ *  ░██   ░██             ░██       ░██    ░██    ░██        ░██
+ * ░██         ░████████  ░██ ░██░████████ ░██   ░██   ░██░████████
+ *  ░████████  ░██    ░██ ░██ ░██   ░██    ░███████    ░██   ░██
+ *         ░██ ░██    ░██ ░██ ░██   ░██    ░██   ░██   ░██   ░██
+ *  ░██   ░██  ░███   ░██ ░██ ░██   ░██    ░██    ░██  ░██   ░██
+ *   ░██████   ░██░█████  ░██ ░██    ░████ ░██     ░██ ░██    ░████
+ *             ░██
+ *             ░██
+ */
+import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
+import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {IERC721Metadata} from "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
+import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import {ISplitERC721} from "./ISplitERC721.sol";
+import {ISplitERC721Errors} from "./ISplitERC721Errors.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 /**
  * @title Split ERC-721
@@ -35,21 +34,16 @@ import { Strings }            from "@openzeppelin/contracts/utils/Strings.sol";
  *    fractionalized, a new instance of the contract is created, allowing for unique state management
  *    per NFT.
  */
-contract SplitERC721 is
-    ERC1155,
-    IERC721Receiver,
-    ISplitERC721,
-    ISplitERC721Errors
-{
-    using {Strings.toString}            for uint256;
-    using {Strings.toString}            for uint24;
+contract SplitERC721 is ERC1155, IERC721Receiver, ISplitERC721, ISplitERC721Errors {
+    using {Strings.toString} for uint256;
+    using {Strings.toString} for uint24;
     using {Strings.toChecksumHexString} for address;
 
     // --------------------------- STRUCTS ---------------------------
 
     /**
      * @notice Struct to hold the data of the fractionalized NFT.
-     * @dev The struct is packed to minimize storage costs: 
+     * @dev The struct is packed to minimize storage costs:
      * - totalSplits is a uint24, enough for 1 million splits;
      * - timestamps are stored as uint64, enough for 500+ years (until Jul 21 2554).
      * @param tokenContract Address of the NFT contract.
@@ -77,7 +71,6 @@ contract SplitERC721 is
     /// @inheritdoc ISplitERC721
     uint24 public constant MAX_SPLITS = 1e6;
 
-
     // ----------------------- STATE VARIABLES -----------------------
 
     // Storage slot: 0
@@ -104,9 +97,7 @@ contract SplitERC721 is
      */
     function uri(uint256 tokenId) public view override returns (string memory) {
         SplitNFT memory nft = splitNFT;
-        try IERC721Metadata(nft.tokenContract).tokenURI(nft.tokenId) returns (
-            string memory tokenURI
-        ) {
+        try IERC721Metadata(nft.tokenContract).tokenURI(nft.tokenId) returns (string memory tokenURI) {
             return tokenURI;
         } catch {
             return "";
@@ -120,27 +111,35 @@ contract SplitERC721 is
         // Split-specific collection metadata
         SplitNFT memory nft = splitNFT;
         bool redeemed = nft.redeemTimestamp != 0;
-        return string(abi.encodePacked(
-            'data:application/json;base64,',
-            Base64.encode(bytes(abi.encodePacked(
-                '{"name": "',
-                redeemed ? '[REDEEMED] ': '',
-                'Split of NFT #', nft.tokenId.toString(), '",',
-                '"description": "Token ID ',
-                    nft.tokenId.toString(),
-                    ', from the collection at address ',
-                    nft.tokenContract.toChecksumHexString(),
-                    ', fractionalized into ',
-                    nft.totalSplits.toString(),
-                    ' splits. The original token',
-                    redeemed
-                        ? ' has been redeemed and all splits have been burnt.'
-                        : ' is safely stored in a smart contract and can be redeemed by burning 100% of the splits.',
-                    '",',
-                '"image": "[URL]/split-logo.png"', // Example image URL, can be replaced with a state variable or function call
-                '}'
-            )))
-        ));
+        return string(
+            abi.encodePacked(
+                "data:application/json;base64,",
+                Base64.encode(
+                    bytes(
+                        abi.encodePacked(
+                            '{"name": "',
+                            redeemed ? "[REDEEMED] " : "",
+                            "Split of NFT #",
+                            nft.tokenId.toString(),
+                            '",',
+                            '"description": "Token ID ',
+                            nft.tokenId.toString(),
+                            ", from the collection at address ",
+                            nft.tokenContract.toChecksumHexString(),
+                            ", fractionalized into ",
+                            nft.totalSplits.toString(),
+                            " splits. The original token",
+                            redeemed
+                                ? " has been redeemed and all splits have been burnt."
+                                : " is safely stored in a smart contract and can be redeemed by burning 100% of the splits.",
+                            '",',
+                            '"image": "[URL]/split-logo.png"', // Example image URL, can be replaced with a state variable or function call
+                            "}"
+                        )
+                    )
+                )
+            )
+        );
     }
 
     /**
@@ -154,12 +153,10 @@ contract SplitERC721 is
      * @param data Additional data with no specified format, sent in the call to this contract.
      * @return bytes4 The selector of this function, indicating successful receipt of the NFT.
      */
-    function onERC721Received(
-        address operator,
-        address from,
-        uint256 tokenId,
-        bytes calldata data
-    ) external returns (bytes4) {
+    function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data)
+        external
+        returns (bytes4)
+    {
         // The contract can only escrow a single NFT
         if (splitNFT.escrowTimestamp != 0) revert SplitERC721Error(ErrorCode.AlreadyEscrowed);
         SplitNFT memory newSplitNFT = SplitNFT({
@@ -167,7 +164,7 @@ contract SplitERC721 is
             tokenId: tokenId,
             totalSplits: 0, // Will be set in the split function
             escrowTimestamp: uint64(block.timestamp),
-            redeemTimestamp: 0 // Will be set when the NFT is redeemed            
+            redeemTimestamp: 0 // Will be set when the NFT is redeemed
         });
         splitNFT = newSplitNFT;
         escrower = operator;
@@ -177,12 +174,9 @@ contract SplitERC721 is
     /**
      * @inheritdoc ISplitERC721
      */
-    function split(
-        uint24 splits,
-        address recipient
-    ) external {
+    function split(uint24 splits, address recipient) external {
         // Ensure the caller is the same address that escrowed the NFT
-        if(msg.sender != escrower) revert SplitERC721Error(ErrorCode.OnlyEscrower);
+        if (msg.sender != escrower) revert SplitERC721Error(ErrorCode.OnlyEscrower);
         // Ensure the recipient is not the zero address
         if (recipient == address(0)) revert SplitERC721Error(ErrorCode.InvalidRecipient);
         // Validate the number of splits
@@ -203,11 +197,7 @@ contract SplitERC721 is
         // Mint the splits for the NFT
         splitNFT.totalSplits = splits;
         _mint(recipient, 0, splits, "");
-        emit NFTFractionalized({
-            nftContract: NFTData.tokenContract,
-            tokenId: NFTData.tokenId,
-            splits: splits
-        });
+        emit NFTFractionalized({nftContract: NFTData.tokenContract, tokenId: NFTData.tokenId, splits: splits});
     }
 
     /**
@@ -224,11 +214,7 @@ contract SplitERC721 is
         // Burn all the splits to redeem the NFT
         _burn(msg.sender, 0, NFTData.totalSplits);
         IERC721(NFTData.tokenContract).safeTransferFrom(address(this), msg.sender, NFTData.tokenId);
-        emit NFTRedeemed({
-            nftContract: NFTData.tokenContract,
-            tokenId: NFTData.tokenId,
-            redeemer: msg.sender
-        });
+        emit NFTRedeemed({nftContract: NFTData.tokenContract, tokenId: NFTData.tokenId, redeemer: msg.sender});
     }
 
     /**

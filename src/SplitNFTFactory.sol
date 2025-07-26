@@ -2,20 +2,19 @@
 pragma solidity 0.8.30;
 
 /**
-  ░██████              ░██ ░██   ░██    ░██     ░██ ░██   ░██    
- ░██   ░██             ░██       ░██    ░██    ░██        ░██    
-░██         ░████████  ░██ ░██░████████ ░██   ░██   ░██░████████ 
- ░████████  ░██    ░██ ░██ ░██   ░██    ░███████    ░██   ░██    
-        ░██ ░██    ░██ ░██ ░██   ░██    ░██   ░██   ░██   ░██    
- ░██   ░██  ░███   ░██ ░██ ░██   ░██    ░██    ░██  ░██   ░██    
-  ░██████   ░██░█████  ░██ ░██    ░████ ░██     ░██ ░██    ░████ 
-            ░██                                                  
-            ░██
-*/
-
-import { Clones }       from "@openzeppelin/contracts/proxy/Clones.sol";
-import { IERC721 }      from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import { SplitERC721 }  from "./SplitERC721.sol";
+ *   ░██████              ░██ ░██   ░██    ░██     ░██ ░██   ░██
+ *  ░██   ░██             ░██       ░██    ░██    ░██        ░██
+ * ░██         ░████████  ░██ ░██░████████ ░██   ░██   ░██░████████
+ *  ░████████  ░██    ░██ ░██ ░██   ░██    ░███████    ░██   ░██
+ *         ░██ ░██    ░██ ░██ ░██   ░██    ░██   ░██   ░██   ░██
+ *  ░██   ░██  ░███   ░██ ░██ ░██   ░██    ░██    ░██  ░██   ░██
+ *   ░██████   ░██░█████  ░██ ░██    ░████ ░██     ░██ ░██    ░████
+ *             ░██
+ *             ░██
+ */
+import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {SplitERC721} from "./SplitERC721.sol";
 
 /**
  * @title SplitNFT Factory
@@ -71,17 +70,13 @@ contract SplitNFTFactory {
      * @param numSplits The total number of splits to create. Min/max enforced by the SplitERC721 contract.
      * @return splitAddress The address of the newly created SplitERC721 contract.
      */
-    function splitNFT(
-        address tokenContract,
-        uint256 tokenId,
-        uint24 numSplits
-    ) external returns (address splitAddress) {
+    function splitNFT(address tokenContract, uint256 tokenId, uint24 numSplits)
+        external
+        returns (address splitAddress)
+    {
         splitAddress = SPLIT_NFT_IMPLEMENTATION.clone();
         splitNFTs[splitNFTContractsCount++] = splitAddress;
         IERC721(tokenContract).safeTransferFrom(msg.sender, splitAddress, tokenId);
-        SplitERC721(splitAddress).split({
-            splits: numSplits,
-            recipient: msg.sender
-        });
+        SplitERC721(splitAddress).split({splits: numSplits, recipient: msg.sender});
     }
 }
