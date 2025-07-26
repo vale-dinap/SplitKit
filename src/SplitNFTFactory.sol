@@ -24,7 +24,7 @@ import { SplitERC721 }  from "./SplitERC721.sol";
  * It allows users to split an ERC721 token into multiple fractionalized tokens (splits).
  * Each split is represented by a new instance of the SplitERC721 contract.
  * The original ERC721 token is held in escrow within the SplitERC721 contract.
- * @dev The SplitManager uses the Clones library to create minimal proxy contracts for each
+ * @dev The SplitNFTFactory uses the Clones library to create minimal proxy contracts for each
  * fractionalized token, which reduces gas costs and deployment complexity.
  * The implementation of this contract is minimal and contains only the logic to create
  * the fractionalized tokens, while the actual logic for splitting and managing the splits,
@@ -45,16 +45,18 @@ contract SplitNFTFactory {
     uint256 public splitNFTContractsCount;
 
     /**
-     * @notice Constructor that initializes the SplitManager with the address of the SplitERC721 implementation.
+     * @notice Constructor that initializes the SplitNFTFactory with the address of the SplitERC721
+     * implementation.
      * @dev The implementation contract is deployed once and reused for creating new splits.
      */
     constructor() {
-        SPLIT_NFT_IMPLEMENTATION = new SplitERC721();
+        SPLIT_NFT_IMPLEMENTATION = address(new SplitERC721());
     }
 
     /**
      * @notice Fractionalizes an ERC721 token into multiple splits.
-     * Note: Caller must be the owner of the NFT and have allowed the SplitManager contract to transfer it.
+     * Note: Caller must be the owner of the NFT and have allowed the SplitNFTFactory contract to
+     * transfer it.
      * @dev This function allows the owner of an ERC721 token to create a fractionalized version of it.
      * It creates a new instance of the SplitERC721 contract, transfers the ERC721 token to it and
      * mints the splits. The original token remains escrowed in the SplitERC721 contract and can be
@@ -63,7 +65,7 @@ contract SplitNFTFactory {
      * - The `onERC721Received` function ensures that the contract is a valid ERC721.
      * - The `split` function validates the number of splits and the recipient.
      * - The `safeTransferFrom` function ensures that the caller is the owner of the token and has
-     *   approved the SplitManager to transfer it.
+     *   approved the SplitNFTFactory to transfer it.
      * @param tokenContract The address of the ERC721 token contract to be fractionalized.
      * @param tokenId The ID of the token to be fractionalized.
      * @param numSplits The total number of splits to create. Min/max enforced by the SplitERC721 contract.
