@@ -13,11 +13,14 @@ pragma solidity 0.8.30;
             ░██
 */
 
-import { Base64 }           from "@openzeppelin/contracts/utils/Base64.sol";
-import { ERC1155 }          from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-import { IERC721 }          from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import { IERC721Receiver }  from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import { Strings }          from "@openzeppelin/contracts/utils/Strings.sol";
+import { Base64 }             from "@openzeppelin/contracts/utils/Base64.sol";
+import { ERC1155 }            from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import { IERC721 }            from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import { IERC721Metadata }    from "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
+import { IERC721Receiver }    from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import { ISplitERC721 }       from "./ISplitERC721.sol";
+import { ISplitERC721Errors } from "./ISplitERC721Errors.sol";
+import { Strings }            from "@openzeppelin/contracts/utils/Strings.sol";
 
 /**
  * @title Split ERC-721
@@ -32,8 +35,12 @@ import { Strings }          from "@openzeppelin/contracts/utils/Strings.sol";
  *    fractionalized, a new instance of the contract is created, allowing for unique state management
  *    per NFT.
  */
-contract SplitERC721 is ERC1155, IERC721Receiver {
-
+contract SplitERC721 is
+    ERC1155,
+    IERC721Receiver,
+    ISplitERC721,
+    ISplitERC721Errors
+{
     using {Strings.toString}            for uint256;
     using {Strings.toString}            for uint24;
     using {Strings.toChecksumHexString} for address;
@@ -45,29 +52,29 @@ contract SplitERC721 is ERC1155, IERC721Receiver {
      * @dev The struct is packed to minimize storage costs: 
      * - totalSplits is a uint24, enough for 1 million splits;
      * - timestamps are stored as uint64, enough for 500+ years (until Jul 21 2554).
+     * @param tokenContract Address of the NFT contract.
+     * @param tokenId ID of the NFT being fractionalized.
      * @param totalSplits Total number of splits created for the NFT.
      * @param escrowTimestamp Timestamp when the NFT was escrowed - zero if not escrowed.
      * @param redeemTimestamp Timestamp when the NFT was redeemed - zero if not redeemed.
-     * @param tokenContract Address of the NFT contract.
-     * @param tokenId ID of the NFT being fractionalized.
      */
     struct SplitNFT {
         // Slot 0
+        address tokenContract;
+        // Slot 1
+        uint256 tokenId;
+        // Slot 2
         uint24 totalSplits;
         uint64 escrowTimestamp;
         uint64 redeemTimestamp;
-        // Slot 1
-        address tokenContract;
-        // Slot 2
-        uint256 tokenId;
     }
 
     // -------------------------- CONSTANTS --------------------------
 
-    /// @notice Minimum number of splits allowed: 2 splits -> 0.5% ownership per split
+    /// @inheritdoc ISplitERC721
     uint24 public constant MIN_SPLITS = 2;
 
-    /// @notice Maximum number of splits allowed: 1 million splits -> 1 PIP (0.0001%) ownership per split
+    /// @inheritdoc ISplitERC721
     uint24 public constant MAX_SPLITS = 1e6;
 
 
@@ -77,54 +84,6 @@ contract SplitERC721 is ERC1155, IERC721Receiver {
     address public escrower; // Address that escrowed the NFT, ensuring that only the escrower can mint splits
     // Storage slots: 1, 2, 3
     SplitNFT public splitNFT;
-
-    // ---------------------------- EVENTS ---------------------------
-
-    /// @notice Emitted when an NFT is fractionalized into splits
-    /// @param nftContract Address of the NFT contract being fractionalized
-    /// @param tokenId ID of the NFT being fractionalized
-    /// @param splits Number of splits created for the NFT
-    event NFTFractionalized(
-        address indexed nftContract,
-        uint256 indexed tokenId,
-        uint24 splits
-    );
-
-    /// @notice Emitted when an NFT is redeemed by burning all splits
-    /// @param nftContract Address of the NFT contract being redeemed
-    /// @param tokenId ID of the NFT being redeemed
-    /// @param redeemer Address of the user redeeming the NFT
-    event NFTRedeemed(
-        address indexed nftContract,
-        uint256 indexed tokenId,
-        address indexed redeemer
-    );
-
-    // --------------------------- ERRORS ----------------------------
-
-    /// @notice Error codes for various operations in the contract
-    /// @dev This enum is used to categorize errors for better readability and maintainability
-    /// Each error corresponds to a specific operation or validation failure
-    enum ErrorCode {
-        AlreadySplit, // The NFT has already been split
-        AlreadyEscrowed, // The NFT has already been escrowed in this contract
-        AlreadyRedeemed, // The NFT has already been redeemed
-        InvalidNFTContract, // The NFT contract is not a valid ERC721 contract
-        OnlyEscrower, // Caller is not the address that escrowed the NFT
-        InvalidRecipient // The recipient address is invalid (zero address)
-    }
-
-    /// @notice Used for errors with no arguments (optimizes bytecode size and improves readability)
-    error SplitERC721Error(ErrorCode code);
-
-    /// @notice Emitted when NFT being fractionalized is not escrowed in this contract
-    error NotEscrowed(address nftContract, uint256 tokenId);
-
-    /// @notice Emitted when the number of splits is less than the minimum or greater than the maximum allowed
-    error InvalidNumberOfSplits(uint256 splits);
-
-    /// @notice Emitted when caller does not own enough splits to perform an action
-    error NotEnoughSplits(uint256 owned, uint256 required);
 
     // ------------------------- CONSTRUCTOR -------------------------
 
@@ -155,10 +114,7 @@ contract SplitERC721 is ERC1155, IERC721Receiver {
     }
 
     /**
-     * @notice Returns the contract URI for the SplitERC721 contract.
-     * @dev This function provides metadata about the contract, including its name, description
-     * and image.
-     * @return string The contract URI in JSON format, encoded in Base64.
+     * @inheritdoc ISplitERC721
      */
     function contractURI() public view returns (string memory) {
         // Split-specific collection metadata
@@ -207,11 +163,11 @@ contract SplitERC721 is ERC1155, IERC721Receiver {
         // The contract can only escrow a single NFT
         if (splitNFT.escrowTimestamp != 0) revert SplitERC721Error(ErrorCode.AlreadyEscrowed);
         SplitNFT memory newSplitNFT = SplitNFT({
-            escrowTimestamp: uint64(block.timestamp),
-            redeemTimestamp: 0, // Will be set when the NFT is redeemed
-            totalSplits: 0, // Will be set in _mintSplits
             tokenContract: msg.sender,
-            tokenId: tokenId
+            tokenId: tokenId,
+            totalSplits: 0, // Will be set in the split function
+            escrowTimestamp: uint64(block.timestamp),
+            redeemTimestamp: 0 // Will be set when the NFT is redeemed            
         });
         splitNFT = newSplitNFT;
         escrower = operator;
@@ -219,11 +175,7 @@ contract SplitERC721 is ERC1155, IERC721Receiver {
     }
 
     /**
-     * @notice Initializes the contract with the given number of splits for the escrowed NFT.
-     * @dev This function is called to set up the initial state of the contract.
-     * It checks that the NFT is escrowed in this contract and mints the splits.
-     * @param splits The number of splits to create for the NFT.
-     * @param recipient The address that will receive the minted splits.
+     * @inheritdoc ISplitERC721
      */
     function split(
         uint24 splits,
@@ -259,10 +211,7 @@ contract SplitERC721 is ERC1155, IERC721Receiver {
     }
 
     /**
-     * @notice Redeems the fractionalized NFT by burning all splits and transferring the original NFT
-     * to the caller.
-     * @dev The caller must own all splits of the NFT to redeem it.
-     * @dev Emits an NFTRedeemed event upon successful redemption.
+     * @inheritdoc ISplitERC721
      */
     function redeem() external {
         SplitNFT memory NFTData = splitNFT; // Read the splitNFT data from storage
@@ -283,23 +232,9 @@ contract SplitERC721 is ERC1155, IERC721Receiver {
     }
 
     /**
-     * @notice Converts a number of splits to a percentage of the total splits.
-     * @dev This function calculates the percentage of ownership represented by a given number of splits.
-     * @param splits The number of splits to convert to a percentage.
-     * @return uint256 The percentage of ownership represented by the given number of splits, in basis points (1/100th of a percent).
+     * @inheritdoc ISplitERC721
      */
     function ownershipFromSplits(uint24 splits) external view returns (uint256) {
         return (uint256(splits) * 10000) / splitNFT.totalSplits;
-    }
-
-    /**
-     * @notice Checks if the contract supports a specific interface.
-     * @dev This function overrides the supportsInterface function from ERC1155 to include
-     * the IERC721Receiver interface.
-     * @param interfaceId The interface identifier, as specified in ERC-165.
-     * @return bool True if the contract implements the interface, false otherwise.
-     */
-    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
-        return super.supportsInterface(interfaceId) || interfaceId == type(IERC721Receiver).interfaceId;
     }
 }
