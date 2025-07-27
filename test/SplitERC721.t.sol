@@ -551,7 +551,7 @@ contract SplitERC721Test is Test {
      * - Confusion about the contract's redemption state
      * - Potential exploits involving multiple redemption calls
      */
-    function test_15_cannotRedeemAlreadyRedeemedNFT() public {
+    function test_cannotRedeemAlreadyRedeemedNFT() public {
         // Arrange - Set up escrow and split
         vm.prank(NFT_OWNER);
         mockNFT.setApprovalForAll(ANOTHER_ADDRESS, true);
