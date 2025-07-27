@@ -185,11 +185,6 @@ contract SplitERC721 is ERC1155, IERC721Receiver, ISplitERC721, ISplitERC721Erro
         SplitNFT memory NFTData = splitNFT;
         // Ensure the NFT has not already been split
         if (NFTData.totalSplits != 0) revert SplitERC721Error(ErrorCode.AlreadySplit);
-        // Ensure the NFT contract is a valid ERC721 contract
-        require(
-            IERC721(NFTData.tokenContract).supportsInterface(type(IERC721).interfaceId),
-            SplitERC721Error(ErrorCode.InvalidNFTContract)
-        );
         // Ensure that the NFT was transferred to this contract
         if (IERC721(NFTData.tokenContract).ownerOf(NFTData.tokenId) != address(this)) {
             revert NotEscrowed(NFTData.tokenContract, NFTData.tokenId);

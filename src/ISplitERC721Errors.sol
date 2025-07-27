@@ -26,7 +26,6 @@ interface ISplitERC721Errors {
         AlreadySplit, // The NFT has already been split
         AlreadyEscrowed, // The NFT has already been escrowed in this contract
         AlreadyRedeemed, // The NFT has already been redeemed
-        InvalidNFTContract, // The NFT contract is not a valid ERC721 contract
         OnlyEscrower, // Caller is not the address that escrowed the NFT
         InvalidRecipient // The recipient address is invalid (zero address)
 
